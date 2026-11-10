@@ -1,0 +1,128 @@
+---
+title: SnapRender
+description: Capture screenshots and PDFs of web pages and read pages as markdown. SnapRender is available in Arcade as a remote MCP server or as an Arcade tool package.
+---
+
+[SnapRender](https://snap-render.com) loads public web pages in a real Chrome browser and returns a screenshot, a PDF, or the page content as markdown. Agents use it to see a page the way a person does (layout, visuals, a phone view) and to read pages that draw their content with JavaScript.
+
+There are two ways to use it in Arcade:
+
+- **Remote MCP server**: register SnapRender's hosted server in your project. All 11 SnapRender tools appear in the Playground and the gateway tool picker.
+- **Arcade tool package**: deploy [`arcade_snaprender`](https://pypi.org/project/arcade-snaprender/), built with `arcade-mcp`, to Arcade Cloud or run it locally.
+
+## MCP server URL
+
+Register the following URL in Arcade: **Servers → Add Server → Remote MCP**. SnapRender authenticates with an API key sent in an `X-API-Key` header, so store the key as a header secret rather than in the URL (see [Authentication](#authentication)).
+
+```text
+https://app.snap-render.com/mcp
+```
+
+## Authentication
+
+SnapRender expects an API key (it starts with `sk_live_`) in the `X-API-Key` header on every request. In Arcade, store the key as a header secret and reference it from a custom header, so the value never appears in the URL or in logs.
+
+| Field | Value |
+| --- | --- |
+| Header name | `X-API-Key` |
+| Header value | `${secret:SNAPRENDER_API_KEY}` |
+| Secret name | `SNAPRENDER_API_KEY` |
+| Secret value | Your SnapRender API key |
+
+Set these under **Advanced settings → Custom headers** when you add the server. See [Remote MCP servers](/en/operate/governance/remote-mcp-servers#configure-advanced-settings) for the full reference.
+
+## What you can do
+
+Once you register SnapRender in your Arcade project, Arcade discovers its tools automatically:
+
+| Tool | What it does |
+| --- | --- |
+| `take_screenshot` | Capture a page as PNG, JPEG, WebP or PDF. Supports full page, phone and tablet presets, dark mode, hiding elements and clicking before the capture. |
+| `extract_content` | Read a page as markdown, plain text, HTML, article fields, a list of links, or metadata. |
+| `batch_screenshots` | Capture up to 50 pages in one job. |
+| `get_batch_status` | Check a batch job and get its download links. |
+| `check_screenshot_cache` | See whether a recent copy of a capture exists (free to call). |
+| `sign_screenshot_url` | Create a signed link that renders a capture when opened, for emails and documents. |
+| `get_usage` | Show the plan, captures used this month and captures left. |
+| `create_webhook`, `list_webhooks`, `delete_webhook`, `test_webhook` | Manage webhooks for capture, quota and page change events. |
+
+Arcade namespaces each tool under the server ID you choose when you add the server, so tool names appear as `<your-server-id>.<tool>` in the Playground and gateway tool picker.
+
+Compose these tools with Slack, Google Docs, Jira, GitHub, or any of Arcade's native servers in a single MCP Gateway. For example, an agent can capture a pricing page, read it as markdown, and post a summary with the screenshot link to a Slack channel.
+
+## Add SnapRender to your Arcade project
+
+<Steps>
+
+### Get your SnapRender API key
+
+Create an account at [app.snap-render.com](https://app.snap-render.com/auth/signup) and copy your API key from the dashboard. The free plan includes 200 captures a month without a card.
+
+### Add SnapRender as a remote MCP server in Arcade
+
+Open the [Servers dashboard](https://app.arcade.dev/servers) → **Add Server** → **Remote MCP**. Set:
+
+- **ID**: a name for the server, for example `snaprender`
+- **URI**: `https://app.snap-render.com/mcp`
+
+Under **Advanced settings → Custom headers**, add the `X-API-Key` header and store your key as described in [Authentication](#authentication), then save.
+
+<Callout type="info">
+  See the full walkthrough in [Remote MCP servers](/en/operate/governance/remote-mcp-servers) for advanced settings like connection retries, header secrets, and custom headers.
+</Callout>
+
+### Verify SnapRender tools
+
+Confirm that Arcade lists the SnapRender tools for your project. They appear in the Playground for this project and in the MCP Gateway tool picker.
+
+### Create an MCP Gateway
+
+Go to **MCP Gateways → Create Gateway**. Select SnapRender plus any other MCP servers you want to compose with. Set the auth mode to **Arcade Auth** so users authenticate with their Arcade account. Copy the gateway URL. This is what your agent connects to.
+
+</Steps>
+
+## Use the Arcade tool package instead
+
+[`arcade_snaprender`](https://github.com/User0856/arcade-snaprender) is an open source (MIT) Arcade tool package with three tools: `SnapRender.TakeScreenshot`, `SnapRender.ExtractContent` and `SnapRender.GetUsage`. `TakeScreenshot` returns a link to the file, which suits agents that post results to chat, email or tickets.
+
+Deploy it to Arcade Cloud:
+
+```bash
+git clone https://github.com/User0856/arcade-snaprender
+cd arcade-snaprender
+arcade login
+arcade deploy -e arcade_snaprender/__main__.py
+arcade secret set SNAPRENDER_API_KEY=sk_live_...
+```
+
+Or run it locally as an MCP server:
+
+```bash
+pip install arcade_snaprender
+export SNAPRENDER_API_KEY=sk_live_...
+arcade-snaprender        # stdio
+arcade-snaprender http   # HTTP on 127.0.0.1:8000
+```
+
+## Call SnapRender tools from your agent
+
+Once you create your gateway, any MCP client that supports Streamable HTTP can use it: Cursor, Claude Desktop, VS Code, or a custom application built with the Vercel AI SDK, LangChain, or OpenAI Agents.
+
+```text
+https://api.arcade.dev/mcp/<YOUR-GATEWAY-SLUG>
+```
+
+Arcade handles authorization, credential handling, and audit logging at runtime.
+
+## Limits
+
+SnapRender only captures public pages. Pages behind a login, `localhost` and private network addresses are refused. Each screenshot or extraction uses one capture from the monthly allowance; failed captures are not counted.
+
+## Resources
+
+- [SnapRender documentation](https://snap-render.com/docs)
+- [SnapRender for AI agents](https://snap-render.com/ai-agents)
+- [arcade_snaprender on GitHub](https://github.com/User0856/arcade-snaprender)
+- [Remote MCP servers](/en/operate/governance/remote-mcp-servers)
+- [Create an MCP Gateway](/en/operate/governance/mcp-gateways/create-via-dashboard)
+- [Connect to MCP clients](/en/get-started/mcp-clients)
